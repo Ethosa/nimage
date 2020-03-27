@@ -7,11 +7,7 @@ import utils
 type
   NimageMode* {.pure.} = enum
     IMG_BMP
-  PixelMode* {.pure.} = enum
-    ARGB
-    RGBA
   Nimage* = ref object
-    pixel_mode*: PixelMode
     w*, h*: uint32
     pixels*: seq[uint32]
 
@@ -23,16 +19,13 @@ proc fill*(img: Nimage, color: uint32) =
       img.pixels[y*img.w + x] = color
 
 
-proc ni_create*(w, h: uint32,
-                pmode: PixelMode = RGBA): Nimage =
+proc newNimage*(w, h: uint32): Nimage =
   ## Creates a new Nimage object
   ##
   ## Arguments:
   ## - `w` - nimage width.
   ## - `h` - nimage height.
-  result = Nimage(
-    w: w, h: h, pixels: newSeq[uint32](w*h),
-    pixel_mode: pmode)
+  result = Nimage(w: w, h: h, pixels: newSeq[uint32](w*h))
   result.fill(0x000000ff'u32)
 
 
@@ -78,6 +71,14 @@ proc line*(img: Nimage, x1, y1, x2, y2, color: uint32) {.inline.} =
     )
 
 
+proc rect*(img: Nimage, x1, y1, x2, y2, color: uint32) =
+  ## Draws the rect in nimage object.
+  for y in y1..y2:
+    for x in x1..x2:
+      img.pixel(x, y, color)
+  echo calc_alpha(color, img.pixels[y1*img.w + x1])
+
+
 proc save*(img: Nimage, filename: string,
            mode: NimageMode = IMG_BMP) =
   ## Saves Nimage object in the file.
@@ -99,17 +100,10 @@ proc save*(img: Nimage, filename: string,
     data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
     data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
     data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    case img.pixel_mode
-    of ARGB:
-      for y in 0..<img.h:
-        for x in countdown(img.w.int-1, 0, 1):
-          let c = cast[array[4, char]](img.pixels[y*img.w + x.uint32])
-          data.add(join([c[0], c[1], c[2], c[3]], ""))
-    of RGBA:
-      for y in 0..<img.h:
-        for x in countdown(img.w.int-1, 0, 1):
-          let c = cast[array[4, char]](img.pixels[y*img.w + x.uint32])
-          data.add(join([c[1], c[2], c[3], c[0]], ""))
+    for y in 0..<img.h:
+      for x in countdown(img.w.int-1, 0, 1):
+        let c = cast[array[4, char]](img.pixels[y*img.w + x.uint32])
+        data.add(join([c[1], c[2], c[3], c[0]], ""))
 
   var file = open(filename, fmWrite)
   file.write(data)
