@@ -18,10 +18,11 @@
 -   Draw pixel.
 -   Draw vertical/horizontal line.
 -   Draw line.
--   Draw filled or not rectangle.
--   Draw filled or not circle.
--   Draw filled or not pie.
--   Draw filled or not triangle.
+-   Draw filled or not
+    -   rectangle.
+    -   circle.
+    -   pie.
+    -   triangle.
 -   Save image in BMP.
 
 <div align="center">
