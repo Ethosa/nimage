@@ -1,6 +1,6 @@
 [Package]
 name = "nimage"
-version = "0.0.4"
+version = "0.0.5"
 description = "The image management library written in Nim."
 license = "MIT"
 author = "Ethosa"

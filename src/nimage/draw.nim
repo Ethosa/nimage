@@ -1,5 +1,4 @@
 # author: Ethosa
-import strutils
 import math
 
 import objects
@@ -17,6 +16,11 @@ proc cosin(q, r, x, y: float): array[2, uint32] {.cdecl.} =
     y_end = if yt > 0: (yt).uint32 else: (yt * -2).uint32
   return [x_end, y_end]
 
+proc distance(x1, y1, x2, y2: uint32): float =
+  return math.sqrt(
+    math.pow(x2.float - x1.float, 2.0) + math.pow(y2.float - y1.float, 2.0)
+  )
+
 
 template setpixel(img, x, y, color, positions: untyped): untyped =
   if [`x`, `y`] notin `positions`:
@@ -26,36 +30,41 @@ template setpixel(img, x, y, color, positions: untyped): untyped =
 
 # ---- PUBLIC ---- #
 proc rgb*(r, g, b: uint32): uint32 {.inline, cdecl.} =
+  ## RGB color to uint32.
   return (r shl 24) or (g shl 16) or (b shl 8) or 255
 
 proc rgba*(r, g, b, a: uint32): uint32 {.inline, cdecl.} =
+  ## RGBA color to uint32
   return (r shl 24) or (g shl 16) or (b shl 8) or (a and 255)
 
 
 proc fill*(img: Nimage, color: uint32) =
   ## Fills image to specific color.
+  ##
+  ## Aruments:
+  ## - `color` - fill color.
   for y in 0..<img.h:
     for x in 0..<img.w:
       img.pixels[y*img.w + x] = color
 
 
-proc newNimage*(w, h: uint32): Nimage =
-  ## Creates a new Nimage object
+proc pixel*(img: Nimage, x, y, color: uint32) {.inline.} =
+  ## Draws pixel at x,y position. Supports Alpha-channel.
   ##
   ## Arguments:
-  ## - `w` - nimage width.
-  ## - `h` - nimage height.
-  result = Nimage(w: w, h: h, pixels: newSeq[uint32](w*h))
-  result.fill(0x000000ff'u32)
-
-
-proc pixel*(img: Nimage, x, y, color: uint32) {.inline.} =
-  ## Draws pixel at x,y position.
+  ## - `x` - position at X coord.
+  ## - `y` - position at Y coord.
   img.pixels[y*img.w + x] = calc_alpha(color, img.pixels[y*img.w + x])
 
 
 proc hline*(img: Nimage, x, x1, y, color: uint32) {.inline.} =
   ## Draws vertical line from x,y to x,y1 position.
+  ##
+  ## Arguments:
+  ## - `x` - first position at X coord.
+  ## - `x1` - second position at X coord.
+  ## - `y` - position at X coord.
+  ## - `color` - fill color.
   if x > x1:
     for i in x1..x:
       img.pixel(i, y, color)
@@ -66,6 +75,12 @@ proc hline*(img: Nimage, x, x1, y, color: uint32) {.inline.} =
 
 proc vline*(img: Nimage, x, y, y1, color: uint32) {.inline.} =
   ## Draws vertical line from x,y to x,y1 position.
+  ##
+  ## Arguments:
+  ## - `x` - position at X coord.
+  ## - `y` - first position at X coord.
+  ## - `y1` - second position at X coord.
+  ## - `color` - fill color.
   if y > y1:
     for i in y1..y:
       img.pixel(x, i, color)
@@ -77,6 +92,13 @@ proc vline*(img: Nimage, x, y, y1, color: uint32) {.inline.} =
 proc line*(img: Nimage, x1, y1, x2, y2, color: uint32,
            ps: ptr seq[array[2, uint32]] = default_positions.addr) {.inline.} =
   ## Draws line at nimage object.
+  ##
+  ## Arguments:
+  ## - `x1` - first position at X coord.
+  ## - `y1` - first position at Y coord.
+  ## - `x2` - second position at X coord.
+  ## - `y2` - second position at Y coord.
+  ## - `color` - fill color.
   let
     nb_points =
       if x1 + x2 > y1 + y2:
@@ -98,6 +120,13 @@ proc line*(img: Nimage, x1, y1, x2, y2, color: uint32,
 
 proc fill_rect*(img: Nimage, x1, y1, x2, y2, color: uint32) =
   ## Draws the filled rect in nimage object.
+  ##
+  ## Arguments:
+  ## - `x1` - first position at X coord.
+  ## - `y1` - first position at Y coord.
+  ## - `x2` - second position at X coord.
+  ## - `y2` - second position at Y coord.
+  ## - `color` - fill color.
   for y in y1..y2:
     for x in x1..x2:
       img.pixel(x, y, color)
@@ -105,6 +134,13 @@ proc fill_rect*(img: Nimage, x1, y1, x2, y2, color: uint32) =
 
 proc rect*(img: Nimage, x1, y1, x2, y2, color: uint32) =
   ## Draws the rect in nimage object.
+  ##
+  ## Arguments:
+  ## - `x1` - first position at X coord.
+  ## - `y1` - first position at Y coord.
+  ## - `x2` - second position at X coord.
+  ## - `y2` - second position at Y coord.
+  ## - `color` - fill color.
   img.line(x1, y1, x2, y1, color)
   img.line(x2, y1, x2, y2, color)
   img.line(x1, y1, x1, y2, color)
@@ -118,6 +154,7 @@ proc circle*(img: Nimage, x, y, radius, color: uint32) =
   ## - `x` - circle center at x.
   ## - `y` - circle center at y.
   ## - `radius` - circle radius.
+  ## - `color` - fill color.
   let
     step = 0.002
     r = radius.float
@@ -138,6 +175,12 @@ proc circle*(img: Nimage, x, y, radius, color: uint32) =
 
 proc fill_circle*(img: Nimage, x, y, radius, color: uint32) =
   ## Draws filled circle at x,y position with `radius`.
+  ##
+  ## Arguments:
+  ## - `x` - circle center at x.
+  ## - `y` - circle center at y.
+  ## - `radius` - circle radius.
+  ## - `color` - fill color.
   let
     step = 0.015
     x1 = x.float
@@ -168,6 +211,7 @@ proc pie*(img: Nimage, x, y, radius, start, finish, color: uint32) =
   ## - `radius` - pie radius.
   ## - `start` - start angle.
   ## - `finish` - finish angle.
+  ## - `color` - fill color.
   let
     step = 0.002
     r = radius.float
@@ -203,6 +247,7 @@ proc fill_pie*(img: Nimage, x, y, radius, start, finish, color: uint32) =
   ## - `radius` - pie radius.
   ## - `start` - start angle.
   ## - `finish` - finish angle.
+  ## - `color` - fill color.
   let
     step = 0.015
     x1 = x.float
@@ -232,35 +277,57 @@ proc fill_pie*(img: Nimage, x, y, radius, start, finish, color: uint32) =
   img.line(pos[0], pos[1], x, y, color, positions.addr)
 
 
-proc save*(img: Nimage, filename: string,
-           mode: NimageMode = IMG_BMP) =
-  ## Saves Nimage object in the file.
-  var data: string
-  case mode
-  of IMG_BMP:
-    data.add("BM\x9a\x00\x00\x00\x00\x00\x00\x00")
-    data.add("z\x00\x00\x00")
-    data.add("l\x00\x00\x00")
-    data.add(join(cast[array[4, char]](img.w), ""))
-    data.add(join(cast[array[4, char]](img.h), ""))
-    data.add("\x01\x00 \x00\x03\x00\x00\x00 \x00")
-    data.add("\x00\x00\x13\x0b\x00\x00\x13\x0b\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    data.add("\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF")
-    data.add("\x00\x00\x00\x00\x00\x00\xFF niW\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    data.add("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-    for y in countdown(img.h.int-1, 0, 1):
-      for x in 0..<img.w:
-        let
-          c = cast[array[4, char]](
-            img.pixels[y.uint32*img.w + x.uint32]
-          )
-        data.add(join([c[1], c[2], c[3], c[0]], ""))
+proc triangle*(img: Nimage, x1, y1, x2, y2, x3, y3, color: uint32) =
+  ## Draws triangle at nimage object.
+  ##
+  ## Arguments:
+  ## - `x1` - first position at X coord.
+  ## - `y1` - first position at Y coord.
+  ## - `x2` - second position at X coord.
+  ## - `y2` - second position at Y coord.
+  ## - `x3` - third position at X coord.
+  ## - `y3` - third position at Y coord.
+  ## - `color` - fill color.
+  var positions: seq[array[2, uint32]]
+  img.line(x1, y1, x2, y2, color, positions.addr)
+  img.line(x2, y2, x3, y3, color, positions.addr)
+  img.line(x1, y1, x3, y3, color, positions.addr)
 
-  var file = open(filename, fmWrite)
-  file.write(data)
-  file.close()
+
+proc fill_triangle*(img: Nimage, x1, y1, x2, y2, x3, y3, color: uint32) =
+  ## Draws triangle at nimage object.
+  ##
+  ## Arguments:
+  ## - `x1` - first position at X coord.
+  ## - `y1` - first position at Y coord.
+  ## - `x2` - second position at X coord.
+  ## - `y2` - second position at Y coord.
+  ## - `x3` - third position at X coord.
+  ## - `y3` - third position at Y coord.
+  ## - `color` - fill color.
+  var positions: seq[array[2, uint32]]
+  img.line(x1, y1, x2, y2, color, positions.addr)
+  img.line(x2, y2, x3, y3, color, positions.addr)
+  img.line(x1, y1, x3, y3, color, positions.addr)
+  let
+    center_x = ((x1 + x2 + x3).float / 3).uint32
+    center_y = ((y1 + y2 + y3).float / 3).uint32
+    a = distance(x1, y1, x2, y2)
+    b = distance(x2, y2, x3, y3)
+    c = distance(x1, y1, x3, y3)
+    p = (a + b + c) / 2
+    S = (math.sqrt(p * (p - a) * (p - b) * (p - c))).uint
+  var q = newSeq[array[2, uint32]](S)
+  q.add([center_x, center_y])
+  while q.len > 0:
+    let
+      x = q[0][0]
+      y = q[0][1]
+    if [x, y] notin positions and x > 0'u32 and x < 65535'u32 and y > 0'u32 and y < 65535'u32:
+      q.add([x+1, y])
+      q.add([x-1, y])
+      q.add([x, y+1])
+      q.add([x, y-1])
+      positions.add([x, y])
+      img.pixel(x, y, color)
+    q.delete(0)
